@@ -5,16 +5,15 @@ const bcrypt = require("bcryptjs");
 const pool = new Pool({
   connectionString: process.env.DATABASE_URL,
   ssl:
-    process.env.NODE_ENV === "production"
+    process.env.DB_SSL === "true" || (process.env.NODE_ENV === "production" && process.env.DB_SSL !== "false")
       ? { rejectUnauthorized: false }
       : false,
 });
 
 const initializeDb = async () => {
-  // In production, you might want to use migrations (e.g., Knex or Sequelize).
-  // This logic is kept for convenience but is wrapped in a try/catch.
-  const client = await pool.connect();
+  let client;
   try {
+    client = await pool.connect();
     console.log("Initializing database schema...");
     await client.query("BEGIN");
 
@@ -70,10 +69,15 @@ const initializeDb = async () => {
     await client.query("COMMIT");
     console.log("Database initialized successfully.");
   } catch (err) {
-    await client.query("ROLLBACK");
-    console.error("Database initialization failed:", err);
+    if (client) {
+      await client.query("ROLLBACK");
+    }
+    console.error("Database initialization failed:", err.message);
+    throw err; // Re-throw to handle it in server.js
   } finally {
-    client.release();
+    if (client) {
+      client.release();
+    }
   }
 };
 

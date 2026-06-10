@@ -23,11 +23,20 @@ app.use(cors({
   origin: (origin, callback) => {
     // Allow requests with no origin (like mobile apps or curl)
     if (!origin) return callback(null, true);
-    if (allowedOrigins.indexOf(origin) === -1) {
+    
+    // Check if origin matches any allowed origin (ignoring trailing slash)
+    const isAllowed = allowedOrigins.some(allowed => {
+      const normalizedAllowed = allowed.replace(/\/$/, "");
+      const normalizedOrigin = origin.replace(/\/$/, "");
+      return normalizedAllowed === normalizedOrigin;
+    });
+
+    if (isAllowed) {
+      return callback(null, true);
+    } else {
       const msg = "The CORS policy for this site does not allow access from the specified Origin.";
       return callback(new Error(msg), false);
     }
-    return callback(null, true);
   },
   credentials: true,
 }));
